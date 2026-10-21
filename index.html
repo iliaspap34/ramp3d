@@ -45,53 +45,68 @@
   #panorama { flex: 1; min-height: 0; width: 100%; }
   body.embed header.bar { display: none; }
 
-  /* ---------- Hotspot beacon ---------- */
-  /* Το div είναι 64x64 και το κέντρο του είναι το ακριβές σημείο της ράμπας. */
-  .pnlm-hotspot-base.c4a-hs { width: 64px; height: 64px; cursor: pointer; outline: none; }
-  .c4a-hs .ring {
-    position: absolute; left: 50%; top: 50%; width: 60px; height: 22px; margin: -11px 0 0 -30px;
-    border-radius: 50%; border: 2px solid rgba(47,168,79,.95);
-    animation: ring 2.4s ease-out infinite;
+  /* ---------- Δείκτης 3D (holographic orb) ---------- */
+  /* Το div είναι 64x64 και το κέντρο του είναι το ακριβές σημείο της ράμπας/εισόδου. */
+  .pnlm-hotspot-base.c4a-hs {
+    width: 64px; height: 64px; cursor: pointer; outline: none;
+    --a1: #4cc3ff; --a2: #003d6b; --acc: #2FA84F; --glow: rgba(37,160,238,.85);
   }
-  .c4a-hs .ring.r2 { animation-delay: 1.2s; }
-  .c4a-hs .core {
-    position: absolute; left: 50%; top: 50%; width: 16px; height: 7px; margin: -3px 0 0 -8px; border-radius: 50%;
-    background: var(--green); box-shadow: 0 0 16px 5px rgba(47,168,79,.85);
+  .pnlm-hotspot-base.c4a-hs.door { --a1: #6ee79a; --a2: #10441f; --acc: #25A0EE; --glow: rgba(47,168,79,.85); }
+
+  .hx-ring {
+    position: absolute; left: 50%; top: 50%; width: 64px; height: 24px; margin: -12px 0 0 -32px;
+    border-radius: 50%; border: 2px solid var(--acc); animation: hx-ring 2.4s ease-out infinite; pointer-events: none;
   }
-  .c4a-hs .stem {
-    position: absolute; left: 50%; bottom: 50%; width: 2px; height: 44px; margin-left: -1px;
-    background: linear-gradient(to top, rgba(47,168,79,.95), rgba(37,160,238,.15));
+  .hx-ring.r2 { animation-delay: 1.2s; }
+  .hx-core {
+    position: absolute; left: 50%; top: 50%; width: 18px; height: 8px; margin: -4px 0 0 -9px; border-radius: 50%;
+    background: var(--acc); box-shadow: 0 0 18px 6px var(--acc); pointer-events: none;
   }
-  .c4a-hs .badge {
-    position: absolute; left: 50%; bottom: calc(50% + 42px); width: 52px; height: 52px; margin-left: -26px;
-    border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(145deg, var(--blue-light), var(--blue-deep));
-    border: 3px solid var(--white);
-    box-shadow: 0 6px 18px rgba(0,0,0,.5), 0 0 0 0 rgba(37,160,238,.7);
-    animation: float 3s ease-in-out infinite, glow 2.4s ease-out infinite;
+  .hx-beam {
+    position: absolute; left: 50%; bottom: 50%; width: 30px; height: 50px; margin-left: -15px; opacity: .85; pointer-events: none;
+    background: linear-gradient(to top, var(--glow), rgba(255,255,255,0));
+    clip-path: polygon(34% 0, 66% 0, 100% 100%, 0 100%);
   }
-  .c4a-hs .badge svg { width: 28px; height: 28px; }
-  .c4a-hs .label {
-    position: absolute; left: 50%; bottom: calc(50% + 100px); transform: translateX(-50%);
+  .hx-orb { position: absolute; left: 50%; bottom: calc(50% + 40px); width: 64px; height: 64px; margin-left: -32px; perspective: 260px; }
+  .hx-orb3d { position: absolute; inset: 0; transform-style: preserve-3d; animation: hx-float 3.2s ease-in-out infinite; }
+  .hx-sphere {
+    position: absolute; left: 9px; top: 9px; width: 46px; height: 46px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 32% 28%, #ffffff 0, var(--a1) 22%, var(--a2) 80%);
+    box-shadow: inset -6px -8px 14px rgba(0,0,0,.45), inset 4px 5px 10px rgba(255,255,255,.35), 0 8px 22px rgba(0,0,0,.55), 0 0 26px var(--glow);
+  }
+  .hx-sphere svg { width: 24px; height: 24px; position: relative; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
+  .hx-gloss {
+    position: absolute; left: 17px; top: 14px; width: 20px; height: 11px; border-radius: 50%;
+    background: linear-gradient(rgba(255,255,255,.75), rgba(255,255,255,0)); transform: rotate(-25deg); pointer-events: none;
+  }
+  .hx-orbit {
+    position: absolute; left: -2px; top: -2px; width: 68px; height: 68px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.55); box-shadow: 0 0 10px var(--glow), inset 0 0 8px var(--glow); pointer-events: none;
+  }
+  .hx-orbit::before {
+    content: ""; position: absolute; top: -6px; left: 50%; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%;
+    background: #fff; box-shadow: 0 0 12px 4px var(--acc);
+  }
+  .hx-orbit.o1 { animation: hx-o1 3.6s linear infinite; }
+  .hx-orbit.o2 { width: 78px; height: 78px; left: -7px; top: -7px; border-color: rgba(255,255,255,.35); animation: hx-o2 5.2s linear infinite reverse; }
+  .hx-label {
+    position: absolute; left: 50%; bottom: calc(50% + 114px); transform: translateX(-50%);
     padding: 5px 12px; border-radius: 999px; white-space: nowrap; font-size: 12px; font-weight: 700; letter-spacing: .3px;
     background: var(--glass); border: 1px solid rgba(255,255,255,.25); color: var(--white);
     backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   }
-  .c4a-hs:hover .badge, .c4a-hs:focus-visible .badge { filter: brightness(1.15); }
-  .c4a-hs:focus-visible .label { border-color: var(--white); }
-  @keyframes ring  { 0% { transform: scale(.35); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
-  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-  @keyframes glow  { 0% { box-shadow: 0 6px 18px rgba(0,0,0,.5), 0 0 0 0 rgba(37,160,238,.7); } 100% { box-shadow: 0 6px 18px rgba(0,0,0,.5), 0 0 0 22px rgba(37,160,238,0); } }
-  @media (prefers-reduced-motion: reduce) {
-    .c4a-hs .ring, .c4a-hs .badge { animation: none; }
-  }
-
-  /* ---------- Δείκτης εισόδου (πόρτα): πράσινο θέμα για να ξεχωρίζει από τη ράμπα ---------- */
-  .c4a-hs.door .badge { background: linear-gradient(145deg, #4fd07a, #1f7a39); }
-  .c4a-hs.door .ring { border-color: rgba(37,160,238,.95); }
-  .c4a-hs.door .core { background: var(--blue-light); box-shadow: 0 0 16px 5px rgba(37,160,238,.85); }
-  .c4a-hs.door .stem { background: linear-gradient(to top, rgba(37,160,238,.95), rgba(47,168,79,.15)); }
+  .c4a-hs:hover .hx-sphere, .c4a-hs:focus-visible .hx-sphere { filter: brightness(1.18); }
+  .c4a-hs:focus-visible .hx-label { border-color: var(--white); }
   #panel .ico.door { background: linear-gradient(145deg, #4fd07a, #1f7a39); }
+
+  @keyframes hx-ring  { 0% { transform: scale(.35); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
+  @keyframes hx-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+  @keyframes hx-o1 { from { transform: rotateX(70deg) rotateZ(0deg); } to { transform: rotateX(70deg) rotateZ(360deg); } }
+  @keyframes hx-o2 { from { transform: rotateY(70deg) rotateZ(0deg); } to { transform: rotateY(70deg) rotateZ(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .hx-ring, .hx-orb3d, .hx-orbit { animation: none; }
+  }
 
   /* ---------- Γραμμή σημείων (γρήγορη μετάβαση) ---------- */
   #points {
@@ -310,7 +325,7 @@ const I18N = {
 const params = new URLSearchParams(location.search);
 const EMBED = params.get("embed") === "1";
 const PICK_MODE = params.get("pick") === "1";
-const SKIP_INTRO = EMBED || PICK_MODE || params.get("intro") === "0";
+const SKIP_INTRO = true;   // χωρίς οθόνη εισόδου: ο viewer ανοίγει κατευθείαν με την αρχική θέαση
 const LANG = params.get("lang") === "en" ? "en" : "el";
 const T = I18N[LANG];
 const L = v => (v && typeof v === "object") ? (v[LANG] || "") : (v || "");
@@ -387,9 +402,12 @@ function buildHotspot(div, h) {
   div.setAttribute("tabindex", "0");
   div.setAttribute("role", "button");
   div.setAttribute("aria-label", L(h.title));
-  ["ring", "ring r2", "core", "stem"].forEach(c => { const e = document.createElement("span"); e.className = c; div.appendChild(e); });
-  const badge = document.createElement("span"); badge.className = "badge"; badge.innerHTML = iconFor(h); div.appendChild(badge);
-  const label = document.createElement("span"); label.className = "label"; label.textContent = L(h.title); div.appendChild(label);
+  const mk = (cls, parent) => { const e = document.createElement("span"); e.className = cls; parent.appendChild(e); return e; };
+  mk("hx-ring", div); mk("hx-ring r2", div); mk("hx-core", div); mk("hx-beam", div);
+  const orb = mk("hx-orb", div), orb3d = mk("hx-orb3d", orb);
+  const sphere = mk("hx-sphere", orb3d); sphere.innerHTML = iconFor(h);
+  mk("hx-gloss", orb3d); mk("hx-orbit o1", orb3d); mk("hx-orbit o2", orb3d);
+  const label = mk("hx-label", div); label.textContent = L(h.title);
   div.addEventListener("click", e => { e.stopPropagation(); openPanel(h); });
   div.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openPanel(h); } });
 }
@@ -404,7 +422,6 @@ const config = {
   minHfov: 30, maxHfov: 120,
   showZoomCtrl: true, showFullscreenCtrl: true,
   mouseZoom: true, keyboardZoom: true, compass: false,
-  autoRotate: (SKIP_INTRO ? 0 : -2),
   hotSpots: ACTIVE.map(h => ({
     id: h.id, pitch: h.pitch, yaw: h.yaw, type: "custom", cssClass: "c4a-hs",
     createTooltipFunc: buildHotspot, createTooltipArgs: h
@@ -416,7 +433,7 @@ viewer.on("error", msg => console.error("Pannellum error:", msg));
 
 // Γραμμή σημείων: γρήγορη μετάβαση σε κάθε σημείο
 const pointsBar = document.getElementById("points");
-function flyTo(h) { viewer.stopAutoRotate(); viewer.lookAt(h.pitch + 8, h.yaw, 70, 1500); openPanel(h); }
+function flyTo(h) { openPanel(h); }   // ανοίγει μόνο το πάνελ, δεν μετακινεί την κάμερα
 ACTIVE.forEach(h => {
   const b = document.createElement("button"); b.type = "button"; b.className = "chip";
   const ic = document.createElement("span"); ic.className = "mini" + (h.type === "door" ? " door" : ""); ic.innerHTML = iconFor(h);
@@ -435,8 +452,6 @@ if (FOCUS) viewer.on("load", () => viewer.lookAt(FOCUS.pitch + 8, FOCUS.yaw, 85,
 const intro = document.getElementById("intro");
 function startTour() {
   intro.classList.add("hide");
-  viewer.stopAutoRotate();
-  if (ACTIVE.length) viewer.lookAt(ACTIVE[0].pitch + 8, ACTIVE[0].yaw, 70, 2000);
 }
 if (SKIP_INTRO) { intro.style.display = "none"; }
 else { document.getElementById("start").addEventListener("click", startTour); }
