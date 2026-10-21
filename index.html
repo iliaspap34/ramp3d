@@ -3,224 +3,498 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>City4All XR – 360° Viewer</title>
+<title>City4All XR – 360° Accessibility Viewer</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pannellum/2.5.6/pannellum.css">
 <style>
   :root {
-    --c4a-blue: #0077C8;
-    --c4a-green: #2FA84F;
-    --c4a-white: #FFFFFF;
-    --c4a-navy: #0A2540;
-    /* Μπλε βέλος με λευκό περίγραμμα και ντεγκραντέ (SVG, χωρίς emoji) */
-    --c4a-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 48'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%2325A0EE'/%3E%3Cstop offset='1' stop-color='%23005A9C'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M20 46 L4 26 H13 V4 H27 V26 H36 Z' fill='url(%23g)' stroke='%23FFFFFF' stroke-width='2.5' stroke-linejoin='round'/%3E%3C/svg%3E");
+    --blue: #0077C8;
+    --blue-light: #2b9be0;
+    --green: #2FA84F;
+    --green-light: #6fd08c;
+    --white: #FFFFFF;
+    --navy: #0A2540;
+    --navy-2: #0d2f55;
+    --line: rgba(255,255,255,.14);
+    --muted: #9db6cf;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--c4a-navy); }
-  body { display: flex; flex-direction: column; }
+  html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--navy); color: var(--white); }
+  body { display: flex; flex-direction: column; overflow: hidden; }
+  button { font-family: inherit; }
 
-  header.c4a-bar {
-    display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    padding: 10px 16px; padding-top: max(10px, env(safe-area-inset-top));
-    background: var(--c4a-navy); color: var(--c4a-white);
-    border-bottom: 4px solid var(--c4a-green);
+  /* ---------- Header ---------- */
+  header.bar {
+    display: flex; align-items: center; justify-content: space-between; flex: none;
+    padding: env(safe-area-inset-top) 16px 0; height: calc(48px + env(safe-area-inset-top));
+    background: var(--navy); border-bottom: 2px solid var(--green); z-index: 20;
   }
-  .c4a-brand { font-weight: 700; font-size: 1.05rem; letter-spacing: .2px; }
-  .c4a-brand span { color: var(--c4a-green); }
-  .c4a-brand small { color: #9fc4e8; font-weight: 500; margin-left: 6px; }
-  .c4a-legend { display: flex; align-items: center; gap: 8px; font-size: .85rem; color: #dbe9f7; }
-  .c4a-dot { width: 16px; height: 19px; background: var(--c4a-arrow) center / contain no-repeat; }
+  .logo { font-weight: 700; font-size: 1rem; letter-spacing: .2px; }
+  .logo b { color: var(--green-light); }
+  .sub { margin-left: 12px; padding-left: 12px; border-left: 1px solid var(--line); color: var(--muted); font-size: .8rem; }
+  .lang {
+    background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 6px;
+    padding: 5px 10px; font-size: .72rem; font-weight: 600; letter-spacing: .6px; cursor: pointer;
+  }
+  .lang:hover, .lang:focus-visible { color: var(--white); border-color: var(--blue-light); outline: none; }
 
   #panorama { flex: 1; min-height: 0; width: 100%; }
+  body.embed header.bar { display: none; }
 
-  /* Embed mode: hide header (?embed=1) */
-  body.embed header.c4a-bar { display: none; }
+  /* ---------- Marker (κυκλικό, επίπεδο, διακριτικό) ---------- */
+  /* Το div είναι 56x56 και το ΚΕΝΤΡΟ του είναι το ακριβές σημείο της ράμπας/εισόδου. */
+  .pnlm-hotspot-base.c4a-hs {
+    width: 56px; height: 56px; cursor: pointer; outline: none;
+    --dot: var(--blue); --ring: var(--green); --arrow: var(--green);
+  }
+  .pnlm-hotspot-base.c4a-hs.door { --dot: var(--green); --ring: var(--blue-light); --arrow: var(--blue-light); }
 
-  /* Hotspot marker */
-  /* Το div είναι 40x96: το κέντρο του (y=48) είναι το ακριβές σημείο της ράμπας.
-     Το βελάκι ζωγραφίζεται στο πάνω μισό και η ακίδα του πέφτει στο κέντρο. */
-  .pnlm-hotspot-base.c4a-hotspot {
-    width: 40px; height: 96px; cursor: pointer; outline: none;
+  .hx-pulse {
+    position: absolute; left: 9px; top: 9px; width: 38px; height: 38px; border-radius: 50%;
+    border: 1.5px solid var(--ring); opacity: 0; pointer-events: none; animation: hx-pulse 3.2s ease-out infinite;
   }
-  .pnlm-hotspot-base.c4a-hotspot::before {
-    content: ""; position: absolute; left: 0; top: 0; width: 40px; height: 48px;
-    background: var(--c4a-arrow) center / contain no-repeat;
-    filter: drop-shadow(0 3px 4px rgba(0,0,0,.45));
-    animation: c4a-bob 1.8s ease-in-out infinite;
+  .hx-dot {
+    position: absolute; left: 9px; top: 9px; width: 38px; height: 38px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--dot); border: 3px solid var(--white); box-shadow: 0 2px 8px rgba(0,0,0,.45);
+    transition: transform .15s;
   }
-  /* Δακτύλιος "ακτίνας" στο σημείο της ράμπας */
-  .pnlm-hotspot-base.c4a-hotspot::after {
-    content: ""; position: absolute; left: 6px; top: 43px; width: 28px; height: 10px;
-    border: 2px solid rgba(0,119,200,.85); border-radius: 50%;
-    animation: c4a-ping 1.8s ease-out infinite;
+  .hx-dot svg { width: 19px; height: 19px; }
+  .hx-arrow {
+    position: absolute; left: 50%; top: -26px; width: 16px; height: 30px; margin-left: -8px; pointer-events: none;
+    color: var(--arrow); filter: drop-shadow(0 1px 2px rgba(0,0,0,.7)); animation: hx-bob 2.2s ease-in-out infinite;
   }
-  .pnlm-hotspot-base.c4a-hotspot:hover::before,
-  .pnlm-hotspot-base.c4a-hotspot:focus-visible::before { filter: drop-shadow(0 0 6px rgba(0,119,200,.9)) drop-shadow(0 3px 4px rgba(0,0,0,.45)); }
-  .pnlm-hotspot-base.c4a-hotspot:focus-visible::after { border-color: var(--c4a-white); }
-  .pnlm-hotspot-base.c4a-hotspot.c4a-demo::after { border-style: dashed; }
-  .c4a-badge {
-    position: absolute; left: 50%; top: 52px; transform: translateX(-50%);
-    padding: 1px 6px; border-radius: 4px; background: var(--c4a-navy); color: var(--c4a-white);
-    font-size: 10px; font-weight: 700; letter-spacing: .5px; border: 1px solid var(--c4a-blue);
+  .hx-arrow svg { width: 100%; height: 100%; display: block; }
+  .hx-label {
+    position: absolute; left: 50%; bottom: calc(100% + 22px); transform: translateX(-50%);
+    padding: 4px 10px; border-radius: 6px; white-space: nowrap; font-size: 12px; font-weight: 600;
+    background: var(--navy); border: 1px solid var(--line); color: var(--white);
+    opacity: 0; pointer-events: none; transition: opacity .15s;
   }
-  @keyframes c4a-bob { 0%,100% { transform: translateY(-4px); } 50% { transform: translateY(2px); } }
-  @keyframes c4a-ping { 0% { transform: scale(.5); opacity: .9; } 100% { transform: scale(1.3); opacity: 0; } }
-  @media (prefers-reduced-motion: reduce) {
-    .pnlm-hotspot-base.c4a-hotspot::before, .pnlm-hotspot-base.c4a-hotspot::after { animation: none; }
-  }
-  .pnlm-hotspot-base.c4a-hotspot span.c4a-tip {
-    visibility: hidden; position: absolute; left: 50%; bottom: 102px; transform: translateX(-50%); z-index: 5;
-    width: max-content; max-width: 240px; padding: 8px 10px; border-radius: 8px;
-    background: var(--c4a-navy); color: var(--c4a-white); font-size: 13px; line-height: 1.35;
-    border: 2px solid var(--c4a-blue); text-align: left; white-space: normal;
-  }
-  .pnlm-hotspot-base.c4a-hotspot:hover span.c4a-tip,
-  .pnlm-hotspot-base.c4a-hotspot:focus span.c4a-tip { visibility: visible; }
-  .c4a-tip b { color: #7fd69a; display: block; margin-bottom: 2px; }
+  .c4a-hs:hover .hx-label, .c4a-hs:focus-visible .hx-label { opacity: 1; }
+  .c4a-hs:hover .hx-dot { transform: scale(1.08); }
+  .c4a-hs:focus-visible .hx-dot { box-shadow: 0 0 0 3px var(--blue-light), 0 2px 8px rgba(0,0,0,.45); }
 
-  /* Pannellum controls in brand colors */
-  .pnlm-controls { border-color: var(--c4a-blue) !important; }
-  .pnlm-controls-container .pnlm-controls { background-color: var(--c4a-blue); }
+  @keyframes hx-pulse { 0% { transform: scale(1); opacity: .6; } 100% { transform: scale(1.7); opacity: 0; } }
+  @keyframes hx-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
+  @media (prefers-reduced-motion: reduce) { .hx-pulse, .hx-arrow { animation: none; } .hx-pulse { display: none; } }
 
-  /* Coordinate picker panel (?pick=1) */
+  /* ---------- Γραμμή σημείων (εμφανίζεται μόνο όταν υπάρχουν 2+ σημεία) ---------- */
+  #points { position: fixed; left: 12px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 25; display: flex; flex-wrap: wrap; gap: 6px; max-width: calc(100% - 24px); }
+  #points button {
+    display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 8px; cursor: pointer;
+    background: var(--navy); color: var(--white); border: 1px solid var(--line); font-size: .8rem; font-weight: 600;
+  }
+  #points button:hover, #points button:focus-visible { border-color: var(--blue-light); outline: none; }
+  #points .mini { width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--blue); }
+  #points .mini.door { background: var(--green); }
+  #points .mini svg { width: 11px; height: 11px; }
+
+  #mark { display: none; position: fixed; right: 10px; bottom: 10px; z-index: 20; padding: 4px 9px; border-radius: 6px; pointer-events: none;
+    font-size: 11px; font-weight: 700; letter-spacing: .3px; background: var(--navy); border: 1px solid var(--line); }
+  #mark b { color: var(--green-light); }
+  body.embed #mark { display: block; }
+
+  /* ---------- Κάρτα πληροφοριών ---------- */
+  #panel {
+    position: fixed; top: 60px; right: 14px; width: 344px; max-height: calc(100% - 76px); overflow: auto;
+    background: var(--navy); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.4); z-index: 30;
+    opacity: 0; pointer-events: none; transform: translateY(8px); transition: opacity .2s, transform .2s;
+  }
+  body.embed #panel { top: 12px; max-height: calc(100% - 24px); }
+  #panel.open { opacity: 1; pointer-events: auto; transform: none; }
+  #panel .head { display: flex; align-items: center; gap: 10px; padding: 14px 12px 12px 14px; }
+  #panel .ico { flex: none; width: 34px; height: 34px; border-radius: 8px; background: var(--blue); display: flex; align-items: center; justify-content: center; }
+  #panel .ico.door { background: var(--green); }
+  #panel .ico svg { width: 20px; height: 20px; }
+  #panel h2 { margin: 0; font-size: 1rem; font-weight: 600; line-height: 1.25; }
+  #panel .tags { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+  #panel .tag { font-size: .62rem; font-weight: 700; letter-spacing: .5px; padding: 2px 7px; border-radius: 4px; border: 1px solid; }
+  #panel .tag.sample { color: #9fd0f5; border-color: rgba(43,155,224,.6); }
+  #panel .tag.ok { color: var(--green-light); border-color: rgba(47,168,79,.7); }
+  #panel .close {
+    margin-left: auto; flex: none; width: 30px; height: 30px; border-radius: 6px; border: 0; cursor: pointer;
+    background: transparent; color: var(--muted); font-size: 20px; line-height: 1;
+  }
+  #panel .close:hover, #panel .close:focus-visible { background: rgba(255,255,255,.1); color: var(--white); outline: none; }
+
+  #panel .viz { margin: 0 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--navy-2); }
+  #panel .viz canvas { display: block; width: 100%; height: 150px; }
+  #panel .viz figcaption { padding: 0 0 7px; text-align: center; font-size: .66rem; letter-spacing: .3px; color: var(--muted); }
+
+  #panel p.desc { margin: 12px 14px 0; font-size: .86rem; line-height: 1.5; color: #cfe0f0; }
+  #panel dl { margin: 12px 14px 0; display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; }
+  #panel dl div { padding: 8px 0; border-top: 1px solid var(--line); }
+  #panel dt { font-size: .64rem; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+  #panel dd { margin: 2px 0 0; font-size: .92rem; font-weight: 600; }
+  #panel dd.nodata { font-size: .8rem; font-weight: 400; color: var(--muted); }
+  #panel p.note { margin: 6px 14px 0; font-size: .72rem; line-height: 1.4; color: var(--muted); }
+  #panel > dl:last-child, #panel > p.note:last-child { margin-bottom: 14px; }
+  #panel .actions { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px; }
+  #panel a.btn { display: block; text-align: center; padding: 9px 12px; border-radius: 8px; background: var(--blue); color: var(--white); text-decoration: none; font-weight: 600; font-size: .86rem; }
+  #panel a.btn:hover, #panel a.btn:focus-visible { background: #0a86e0; outline: none; }
+  #panel a.btn.alt { background: transparent; border: 1px solid var(--line); }
+  #panel a.btn.alt:hover { border-color: var(--blue-light); }
+
+  /* ---------- Pannellum controls ---------- */
+  .pnlm-controls { border-color: var(--blue) !important; }
+  .pnlm-controls-container .pnlm-controls { background-color: var(--blue); }
+
+  /* ---------- Picker (?pick=1) ---------- */
   #picker {
     display: none; position: fixed; left: 10px; right: 10px; bottom: max(10px, env(safe-area-inset-bottom));
-    max-width: 520px; padding: 10px 12px; border-radius: 10px;
-    background: rgba(10,37,64,.95); color: var(--c4a-white); font-size: 14px; z-index: 50;
-    border: 2px solid var(--c4a-green);
+    max-width: 520px; padding: 10px 12px; border-radius: 8px; background: var(--navy); font-size: 14px; z-index: 50; border: 2px solid var(--green);
   }
-  #picker code { display: block; margin: 6px 0; padding: 6px; background: #06182c; border-radius: 6px; color: #7fd69a; word-break: break-all; }
-  #picker button { background: var(--c4a-blue); color: #fff; border: 0; padding: 8px 12px; border-radius: 6px; font-size: 14px; cursor: pointer; }
+  #picker code { display: block; margin: 6px 0; padding: 6px; background: #06182c; border-radius: 6px; color: var(--green-light); word-break: break-all; }
+  #picker button { background: var(--blue); color: #fff; border: 0; padding: 8px 12px; border-radius: 6px; font-size: 14px; cursor: pointer; }
+
+  /* ---------- Κινητά ---------- */
+  @media (max-width: 640px) {
+    .sub { display: none; }
+    #panel, body.embed #panel { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; max-height: 80%; transform: translateY(20px); padding-bottom: env(safe-area-inset-bottom); }
+    #panel.open { transform: none; }
+    #panel .viz canvas { height: 130px; }
+  }
 </style>
 </head>
 <body>
 
-<header class="c4a-bar">
-  <div class="c4a-brand">City4All <span>XR</span><small>360° προσβασιμότητα</small></div>
-  <div class="c4a-legend"><span class="c4a-dot"></span> Ράμπα προσβασιμότητας</div>
+<header class="bar">
+  <div><span class="logo">City4All <b>XR</b></span><span class="sub" data-t="sub"></span></div>
+  <button class="lang" id="lang" type="button" aria-label="Language">EN</button>
 </header>
 
 <div id="panorama"></div>
 
+<aside id="panel" role="dialog" aria-live="polite" aria-labelledby="pTitle"></aside>
+<div id="points"></div>
+<div id="mark">City4All <b>XR</b></div>
+
 <div id="picker">
-  <div><b>Λειτουργία επιλογής σημείου.</b> Κάνε κλικ/tap πάνω στη ράμπα:</div>
+  <div><b>Pick mode.</b> <span id="pickMsg"></span></div>
   <code id="pickOut">—</code>
-  <button id="pickCopy" type="button">Αντιγραφή</button>
+  <button id="pickCopy" type="button">Copy</button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pannellum/2.5.6/pannellum.js"></script>
 <script>
 /* ============================================================
-   ΡΥΘΜΙΣΕΙΣ – αυτό είναι το μόνο σημείο που αλλάζεις συνήθως
+   ΡΥΘΜΙΣΕΙΣ – εδώ αλλάζεις τα δεδομένα του project
    ============================================================ */
 
-// Σχετική διαδρομή: δουλεύει σε GitHub Pages και σε υποφάκελο repo.
-const PANORAMA_FILE = "ramp-01.jpg";
+const PANORAMA_FILE = "ramp-01.jpg";   // σχετική διαδρομή (δουλεύει σε GitHub Pages)
 
-// Γωνίες του πανοράματος (από Hugin → tab Stitcher → Field of View).
-// ΠΡΟΣΟΧΗ: οι τιμές είναι ΕΚΤΙΜΗΣΗ (360 × 154) μέχρι να επιβεβαιωθούν από το Hugin.
-// Αν το πανόραμα ΔΕΝ είναι πλήρες 360°, άλλαξε το HAOV.
-const HAOV = 360;      // οριζόντιο εύρος σε μοίρες
-const VAOV = 154;      // κάθετο εύρος σε μοίρες (360 * 2198 / 5132 ≈ 154)
-const V_OFFSET = 0;    // μετατόπιση ορίζοντα, συνήθως 0
+// Από Hugin → Stitcher → Field of View. Οι τιμές είναι ΕΚΤΙΜΗΣΗ μέχρι να επιβεβαιωθούν.
+const HAOV = 360;
+const VAOV = 154;
+const V_OFFSET = 0;
 
-// Αρχική θέαση
-const START_YAW = 0;
-const START_PITCH = 0;
-const START_HFOV = 100;
+// Αρχική θέαση: οι αρχικές ρυθμίσεις του αρχείου, ανεξάρτητα από τη θέση της ράμπας.
+const START_YAW = 0, START_PITCH = 0, START_HFOV = 100;
+const MIN_HFOV = 30, MAX_HFOV = 120;
 
-// Σημεία ράμπας. Κάθε ράμπα = ένα αντικείμενο.
-// pitch = ύψος (+πάνω, −κάτω), yaw = αριστερά/δεξιά (−180 .. 180)
+/* Σημεία προσβασιμότητας.
+   - pitch / yaw: null = το σημείο ΔΕΝ εμφανίζεται. Βρες τις τιμές με ?pick=1.
+   - sample: true = ΔΟΚΙΜΑΣΤΙΚΑ δεδομένα (εμφανίζεται ένδειξη «Δείγμα δεδομένων»). Βάλε false με πραγματικές μετρήσεις.
+   - Πεδίο null = η κάρτα γράφει «Δεν υπάρχουν διαθέσιμα δεδομένα».
+   - moreUrl: σελίδα City4All. Το κουμπί «Περισσότερες πληροφορίες» εμφανίζεται μόνο αν υπάρχει.
+   - lat / lng: (προαιρετικό) για σύνδεσμο προς OpenStreetMap. */
 const HOTSPOTS = [
   {
-    id: "demo-ramp",
-    pitch: -10,           // DEMO – όχι πραγματική θέση
-    yaw: 0,               // DEMO – όχι πραγματική θέση
-    title: "DEMO – Placeholder ράμπας",
-    text: "Δοκιμαστικό σημείο. Βρες την πραγματική ράμπα με ?pick=1 και άλλαξε pitch/yaw.",
-    demo: true
+    id: "ramp-001",
+    type: "ramp",
+    pitch: -10,
+    yaw: 0,
+    title: { el: "Ράμπα πρόσβασης", en: "Access ramp" },
+    text:  { el: "Ράμπα στην είσοδο που διευκολύνει την πρόσβαση για αμαξίδια, καρότσια και άτομα με περιορισμένη κινητικότητα.",
+             en: "Entrance ramp that makes access easier for wheelchairs, strollers and people with reduced mobility." },
+    sample: true,
+    status: null,       // "verified" → ένδειξη «Επαληθευμένο»
+    rampType: { el: "Σταθερή ράμπα", en: "Fixed ramp" },        // ΔΕΙΓΜΑ
+    width: { el: "1,50 μ.", en: "1.50 m" },                      // ΔΕΙΓΜΑ
+    slope: "6%",                                                  // ΔΕΙΓΜΑ
+    condition: { el: "Καλή", en: "Good" },                       // ΔΕΙΓΜΑ
+    surface: { el: "Αντιολισθητική", en: "Non-slip" },           // ΔΕΙΓΜΑ
+    handrails: { el: "Και στις δύο πλευρές", en: "Both sides" }, // ΔΕΙΓΜΑ
+    surveyed: null,
+    moreUrl: null,
+    lat: null,
+    lng: null
+  },
+  {
+    id: "door-001",
+    type: "door",
+    pitch: null,        // ΕΚΚΡΕΜΕΙ: η πόρτα είναι λίγο δεξιά από τη ράμπα. Βρες τις τιμές με ?pick=1
+    yaw: null,
+    title: { el: "Είσοδος", en: "Entrance" },
+    text:  { el: "", en: "" },
+    sample: false,
+    status: null,
+    width: null,
+    surveyed: null,
+    moreUrl: null,
+    lat: null,
+    lng: null
   }
-  // Παράδειγμα πραγματικής ράμπας (αντίγραψε και συμπλήρωσε):
-  // { id: "ramp-001", pitch: -12.4, yaw: 37.8, title: "Ράμπα εισόδου", text: "Κλίση ~6%, πλάτος 1.5 m", demo: false },
 ];
+
+/* ============================================================
+   ΚΕΙΜΕΝΑ (Ελληνικά / English)
+   ============================================================ */
+const I18N = {
+  el: {
+    sub: "360° προσβασιμότητα", close: "Κλείσιμο", verified: "ΕΠΑΛΗΘΕΥΜΕΝΟ",
+    rampType: "Τύπος ράμπας", width: "Πλάτος", slope: "Κλίση", condition: "Κατάσταση", surface: "Επιφάνεια", handrails: "Κουπαστές", surveyed: "Καταγραφή",
+    noData: "Δεν υπάρχουν διαθέσιμα δεδομένα", more: "Περισσότερες πληροφορίες", openMap: "Άνοιγμα στον χάρτη",
+    sample: "ΔΕΙΓΜΑ ΔΕΔΟΜΕΝΩΝ", sampleNote: "Τα στοιχεία είναι δοκιμαστικά και δεν προέρχονται από πραγματική μέτρηση.",
+    schematic: "Σχηματική απεικόνιση",
+    pickMsg: "Κάνε κλικ/tap πάνω στο σημείο:", copy: "Αντιγραφή", noPoint: "Δεν έχει οριστεί ακόμα θέση (pitch/yaw = null)."
+  },
+  en: {
+    sub: "360° accessibility", close: "Close", verified: "VERIFIED",
+    rampType: "Ramp type", width: "Width", slope: "Slope", condition: "Condition", surface: "Surface", handrails: "Handrails", surveyed: "Surveyed",
+    noData: "No data available", more: "More information", openMap: "Open in map",
+    sample: "SAMPLE DATA", sampleNote: "These values are placeholders and do not come from a real measurement.",
+    schematic: "Schematic illustration",
+    pickMsg: "Click/tap exactly on the location:", copy: "Copy", noPoint: "No position set yet (pitch/yaw = null)."
+  }
+};
 
 /* ============================================================
    ΚΩΔΙΚΑΣ – δεν χρειάζεται αλλαγή
    ============================================================ */
 const params = new URLSearchParams(location.search);
-if (params.get("embed") === "1") document.body.classList.add("embed");
+const EMBED = params.get("embed") === "1";
 const PICK_MODE = params.get("pick") === "1";
+const LANG = params.get("lang") === "en" ? "en" : "el";
+const T = I18N[LANG];
+const L = v => (v && typeof v === "object") ? (v[LANG] || "") : (v || "");
+const num = (k, d) => { const v = parseFloat(params.get(k)); return isFinite(v) ? v : d; };
 
-function buildTooltip(hotSpotDiv, args) {
-  hotSpotDiv.classList.add("c4a-hotspot");
-  if (args.demo) hotSpotDiv.classList.add("c4a-demo");
-  hotSpotDiv.setAttribute("tabindex", "0");
-  hotSpotDiv.setAttribute("role", "button");
-  hotSpotDiv.setAttribute("aria-label", args.title);
-  const tip = document.createElement("span");
-  tip.className = "c4a-tip";
-  const b = document.createElement("b");
-  b.textContent = args.title;
-  tip.appendChild(b);
-  tip.appendChild(document.createTextNode(args.text || ""));
-  hotSpotDiv.appendChild(tip);
-  if (args.demo) {
-    const badge = document.createElement("span");
-    badge.className = "c4a-badge";
-    badge.textContent = "DEMO";
-    hotSpotDiv.appendChild(badge);
+if (EMBED) document.body.classList.add("embed");
+document.documentElement.lang = LANG;
+document.querySelectorAll("[data-t]").forEach(el => { el.textContent = T[el.dataset.t] || ""; });
+document.getElementById("lang").textContent = LANG === "el" ? "EN" : "EL";
+document.getElementById("lang").addEventListener("click", () => {
+  const p = new URLSearchParams(location.search);
+  p.set("lang", LANG === "el" ? "en" : "el");
+  location.search = p.toString();
+});
+
+const ACTIVE = HOTSPOTS.filter(h => typeof h.pitch === "number" && typeof h.yaw === "number");
+
+// Εικονίδια (SVG, χωρίς emoji)
+const RAMP_SVG = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+  '<path d="M3 19H21V8L3 19Z" fill="#fff"/>' +
+  '<path d="M6 14.5L13 9.5M13 9.5H9.6M13 9.5V12.9" stroke="#0077C8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const DOOR_SVG = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+  '<path d="M6 21V4.5C6 3.7 6.7 3 7.5 3H16.5C17.3 3 18 3.7 18 4.5V21" fill="#fff"/>' +
+  '<circle cx="15" cy="12.5" r="1.3" fill="#2FA84F"/>' +
+  '<path d="M3.5 21H20.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>';
+const ARROW_SVG = '<svg viewBox="0 0 16 30" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+  '<path d="M8 2V24M2.5 18.5L8 25L13.5 18.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const iconFor = h => (h.type === "door" ? DOOR_SVG : RAMP_SVG);
+
+/* ---------- 3D ράμπα σε σχέδιο (διακεκομμένες γραμμές, περιστρέφεται) ---------- */
+let rampRaf = 0;
+function stopRamp() { if (rampRaf) cancelAnimationFrame(rampRaf); rampRaf = 0; }
+
+function startRamp(canvas) {
+  stopRamp();
+  const ctx = canvas.getContext("2d");
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const Ln = 200, W = 72, H = 22, P = 54, R = 34;            // σχηματικές διαστάσεις (όχι μετρήσεις)
+  const cx = (Ln + P) / 2, cy = W / 2, cz = H / 2 + 8;
+  const surf = x => Math.min(Math.max(x, 0), Ln) * H / Ln;
+  const edges = [];
+  const add = (a, b, t) => edges.push([a, b, t]);
+
+  const g = [[0,0,0], [Ln+P,0,0], [Ln+P,W,0], [0,W,0]];
+  for (let i = 0; i < 4; i++) add(g[i], g[(i+1) % 4], "g");
+  add([0,0,0], [Ln,0,H], "s");   add([0,W,0], [Ln,W,H], "s");
+  add([Ln,0,H], [Ln+P,0,H], "s"); add([Ln,W,H], [Ln+P,W,H], "s");
+  add([Ln,0,H], [Ln,W,H], "s");   add([Ln+P,0,H], [Ln+P,W,H], "s");
+  add([Ln,0,0], [Ln,0,H], "s");   add([Ln,W,0], [Ln,W,H], "s");
+  add([Ln+P,0,0], [Ln+P,0,H], "s"); add([Ln+P,W,0], [Ln+P,W,H], "s");
+  for (let x = 25; x < Ln; x += 25) add([x,0,surf(x)], [x,W,surf(x)], "t");
+  const px = [8, Ln * 0.35, Ln * 0.7, Ln, Ln + P - 8];
+  [0, W].forEach(y => {
+    px.forEach(x => add([x,y,surf(x)], [x,y,surf(x) + R], "h"));
+    for (let i = 0; i < px.length - 1; i++) add([px[i],y,surf(px[i]) + R], [px[i+1],y,surf(px[i+1]) + R], "h");
+  });
+
+  const STYLE = {
+    s: { c: "143,211,255", w: 1.4, d: [6, 4] },
+    h: { c: "111,208,140", w: 1.4, d: [3, 3] },
+    g: { c: "143,211,255", w: 1,   d: [2, 4], a: .55 },
+    t: { c: "143,211,255", w: 1,   d: [1.5, 4], a: .4 }
+  };
+
+  function frame(ts) {
+    if (!canvas.isConnected) { rampRaf = 0; return; }
+    const w = canvas.clientWidth, h = canvas.clientHeight, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (!w || !h) { rampRaf = requestAnimationFrame(frame); return; }
+    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+      canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    const th = reduce ? 0.7 : (ts || 0) / 1000 * 0.45 + 0.7;
+    const c = Math.cos(th), s = Math.sin(th), ce = Math.cos(0.5), se = Math.sin(0.5);
+    const sc = Math.min(w / 330, h / 170);
+    const proj = p => {
+      const x = p[0] - cx, y = p[1] - cy, z = p[2] - cz;
+      const xr = x * c - y * s, yr = x * s + y * c;
+      const dz = yr * ce - z * se, f = 1 / (1 + dz * 0.002);
+      return [w / 2 + xr * f * sc, h / 2 + 6 - (z * ce + yr * se) * f * sc, dz];
+    };
+    ctx.lineCap = "round";
+    edges.forEach(e => {
+      const a = proj(e[0]), b = proj(e[1]), st = STYLE[e[2]];
+      const depth = (a[2] + b[2]) / 2;
+      const al = (st.a || 1) * Math.max(.35, Math.min(1, 1 - (depth + 140) / 300 * .6));
+      ctx.strokeStyle = "rgba(" + st.c + "," + al.toFixed(3) + ")";
+      ctx.lineWidth = st.w; ctx.setLineDash(st.d);
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+    });
+    if (!reduce) rampRaf = requestAnimationFrame(frame); else rampRaf = 0;
   }
+  rampRaf = requestAnimationFrame(frame);
+}
+
+/* ---------- Κάρτα ---------- */
+const panel = document.getElementById("panel");
+
+function row(dl, label, value) {
+  const d = document.createElement("div");
+  const dt = document.createElement("dt"); dt.textContent = label;
+  const dd = document.createElement("dd");
+  const v = L(value);
+  if (v) dd.textContent = v; else { dd.textContent = T.noData; dd.className = "nodata"; }
+  d.appendChild(dt); d.appendChild(dd); dl.appendChild(d);
+}
+const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt) e.textContent = txt; return e; };
+
+function openPanel(h) {
+  stopRamp();
+  panel.textContent = "";
+  const head = el("div", "head");
+  const ico = el("div", "ico" + (h.type === "door" ? " door" : "")); ico.innerHTML = iconFor(h);
+  const mid = el("div");
+  const h2 = el("h2", "", L(h.title)); h2.id = "pTitle"; mid.appendChild(h2);
+  if (h.status === "verified" || h.sample) {
+    const tags = el("div", "tags");
+    if (h.status === "verified") tags.appendChild(el("span", "tag ok", T.verified));
+    if (h.sample) tags.appendChild(el("span", "tag sample", T.sample));
+    mid.appendChild(tags);
+  }
+  const close = el("button", "close", "×"); close.type = "button"; close.setAttribute("aria-label", T.close);
+  close.addEventListener("click", closePanel);
+  head.appendChild(ico); head.appendChild(mid); head.appendChild(close);
+  panel.appendChild(head);
+
+  let canvas = null;
+  if (h.type !== "door") {
+    const fig = el("figure", "viz"); fig.style.margin = "0 14px";
+    canvas = el("canvas"); canvas.setAttribute("aria-hidden", "true");
+    fig.appendChild(canvas); fig.appendChild(el("figcaption", "", T.schematic));
+    panel.appendChild(fig);
+  }
+
+  const txt = L(h.text);
+  if (txt) panel.appendChild(el("p", "desc", txt));
+
+  const dl = el("dl");
+  if (h.type === "door") { row(dl, T.width, h.width); }
+  else {
+    row(dl, T.rampType, h.rampType); row(dl, T.width, h.width); row(dl, T.slope, h.slope);
+    row(dl, T.condition, h.condition); row(dl, T.surface, h.surface); row(dl, T.handrails, h.handrails);
+  }
+  if (h.surveyed) row(dl, T.surveyed, h.surveyed);
+  panel.appendChild(dl);
+
+  if (h.sample) panel.appendChild(el("p", "note", T.sampleNote));
+
+  const hasMap = typeof h.lat === "number" && typeof h.lng === "number";
+  if (h.moreUrl || hasMap) {
+    const act = el("div", "actions");
+    if (h.moreUrl) { const a = el("a", "btn", T.more); a.href = h.moreUrl; a.target = "_blank"; a.rel = "noopener"; act.appendChild(a); }
+    if (hasMap) {
+      const a = el("a", "btn alt", T.openMap); a.target = "_blank"; a.rel = "noopener";
+      a.href = "https://www.openstreetmap.org/?mlat=" + h.lat + "&mlon=" + h.lng + "#map=19/" + h.lat + "/" + h.lng;
+      act.appendChild(a);
+    }
+    panel.appendChild(act);
+  }
+  panel.classList.add("open");
+  if (canvas) startRamp(canvas);
+}
+function closePanel() { panel.classList.remove("open"); stopRamp(); }
+document.addEventListener("keydown", e => { if (e.key === "Escape") closePanel(); });
+
+/* ---------- Marker ---------- */
+function buildHotspot(div, h) {
+  div.classList.add("c4a-hs");
+  if (h.type === "door") div.classList.add("door");
+  div.setAttribute("tabindex", "0");
+  div.setAttribute("role", "button");
+  div.setAttribute("aria-label", L(h.title));
+  const mk = (cls) => { const e = document.createElement("span"); e.className = cls; div.appendChild(e); return e; };
+  mk("hx-pulse");
+  mk("hx-dot").innerHTML = iconFor(h);
+  mk("hx-arrow").innerHTML = ARROW_SVG;
+  mk("hx-label").textContent = L(h.title);
+  div.addEventListener("click", e => { e.stopPropagation(); openPanel(h); });
+  div.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openPanel(h); } });
 }
 
 const config = {
   type: "equirectangular",
   panorama: PANORAMA_FILE,
   autoLoad: true,
-  haov: HAOV,
-  vaov: VAOV,
-  vOffset: V_OFFSET,
-  minPitch: V_OFFSET - VAOV / 2,
-  maxPitch: V_OFFSET + VAOV / 2,
-  yaw: START_YAW,
-  pitch: START_PITCH,
-  hfov: START_HFOV,
-  minHfov: 30,
-  maxHfov: 120,
-  showZoomCtrl: true,
-  showFullscreenCtrl: true,
-  mouseZoom: true,
-  keyboardZoom: true,
-  compass: false,
-  hotSpotDebug: false,
-  hotSpots: HOTSPOTS.map(h => ({
-    id: h.id,
-    pitch: h.pitch,
-    yaw: h.yaw,
-    type: "custom",
-    cssClass: "c4a-hotspot",
-    createTooltipFunc: buildTooltip,
-    createTooltipArgs: { title: h.title, text: h.text, demo: !!h.demo }
+  haov: HAOV, vaov: VAOV, vOffset: V_OFFSET,
+  minPitch: V_OFFSET - VAOV / 2, maxPitch: V_OFFSET + VAOV / 2,
+  yaw: num("yaw", START_YAW), pitch: num("pitch", START_PITCH), hfov: Math.min(MAX_HFOV, Math.max(MIN_HFOV, num("hfov", START_HFOV))),
+  minHfov: MIN_HFOV, maxHfov: MAX_HFOV,
+  showZoomCtrl: true, showFullscreenCtrl: true,
+  mouseZoom: true, keyboardZoom: true, compass: false,
+  hotSpots: ACTIVE.map(h => ({
+    id: h.id, pitch: h.pitch, yaw: h.yaw, type: "custom", cssClass: "c4a-hs",
+    createTooltipFunc: buildHotspot, createTooltipArgs: h
   }))
 };
 
 const viewer = pannellum.viewer("panorama", config);
+viewer.on("error", msg => console.error("Pannellum error:", msg));
 
-viewer.on("error", function (msg) {
-  console.error("Pannellum error:", msg);
-});
-
-// Λειτουργία επιλογής συντεταγμένων
-if (PICK_MODE) {
-  const box = document.getElementById("picker");
-  const out = document.getElementById("pickOut");
-  box.style.display = "block";
-  viewer.on("mousedown", function (event) {
-    const c = viewer.mouseEventToCoords(event); // [pitch, yaw]
-    const p = c[0].toFixed(1), y = c[1].toFixed(1);
-    out.textContent = "pitch: " + p + ",  yaw: " + y;
+// Γραμμή σημείων: μόνο όταν υπάρχουν 2+ σημεία (ανοίγει την κάρτα, δεν μετακινεί την κάμερα)
+const pointsBar = document.getElementById("points");
+if (ACTIVE.length > 1 && !PICK_MODE) {
+  ACTIVE.forEach(h => {
+    const b = el("button"); b.type = "button";
+    const ic = el("span", "mini" + (h.type === "door" ? " door" : "")); ic.innerHTML = iconFor(h);
+    b.appendChild(ic); b.appendChild(el("span", "", L(h.title)));
+    b.addEventListener("click", () => openPanel(h));
+    pointsBar.appendChild(b);
   });
-  document.getElementById("pickCopy").addEventListener("click", function () {
-    const t = out.textContent;
-    if (navigator.clipboard) navigator.clipboard.writeText(t);
+} else { pointsBar.style.display = "none"; }
+
+// Embed: με &focus=ramp-001 ή &focus=door-001 ξεκινά κοιτώντας εκείνο το σημείο
+const FOCUS = ACTIVE.find(h => h.id === params.get("focus"));
+if (FOCUS) viewer.on("load", () => viewer.lookAt(FOCUS.pitch + 8, FOCUS.yaw, 85, false));
+
+// Pick mode
+if (PICK_MODE) {
+  document.getElementById("picker").style.display = "block";
+  document.getElementById("pickMsg").textContent = T.pickMsg;
+  document.getElementById("pickCopy").textContent = T.copy;
+  const out = document.getElementById("pickOut");
+  if (!ACTIVE.length) out.textContent = T.noPoint;
+  viewer.on("mousedown", ev => {
+    const c = viewer.mouseEventToCoords(ev);
+    out.textContent = "pitch: " + c[0].toFixed(1) + ",  yaw: " + c[1].toFixed(1);
+  });
+  document.getElementById("pickCopy").addEventListener("click", () => {
+    if (navigator.clipboard) navigator.clipboard.writeText(out.textContent);
   });
 }
 </script>
