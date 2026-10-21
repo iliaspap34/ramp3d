@@ -430,13 +430,16 @@ function buildHotspot(div, h) {
   div.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openPanel(h); } });
 }
 
+// Δοκιμή θέασης από το URL: ?hfov=80 (πιο κοντά) ... ?hfov=120 (πιο μακριά), προαιρετικά &yaw=..&pitch=..
+const num = (k, d) => { const v = parseFloat(params.get(k)); return isFinite(v) ? v : d; };
+
 const config = {
   type: "equirectangular",
   panorama: PANORAMA_FILE,
   autoLoad: true,
   haov: HAOV, vaov: VAOV, vOffset: V_OFFSET,
   minPitch: V_OFFSET - VAOV / 2, maxPitch: V_OFFSET + VAOV / 2,
-  yaw: START_YAW, pitch: START_PITCH, hfov: START_HFOV,
+  yaw: num("yaw", START_YAW), pitch: num("pitch", START_PITCH), hfov: Math.min(120, Math.max(30, num("hfov", START_HFOV))),
   minHfov: 30, maxHfov: 120,
   showZoomCtrl: true, showFullscreenCtrl: true,
   mouseZoom: true, keyboardZoom: true, compass: false,
