@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>City4All XR – 360° Viewer</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pannellum/2.5.6/pannellum.css">
+<style>
+  :root {
+    --c4a-blue: #0077C8;
+    --c4a-green: #2FA84F;
+    --c4a-white: #FFFFFF;
+    --c4a-navy: #0A2540;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--c4a-navy); }
+  body { display: flex; flex-direction: column; }
+
+  header.c4a-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 10px 16px; padding-top: max(10px, env(safe-area-inset-top));
+    background: var(--c4a-navy); color: var(--c4a-white);
+    border-bottom: 4px solid var(--c4a-green);
+  }
+  .c4a-brand { font-weight: 700; font-size: 1.05rem; letter-spacing: .2px; }
+  .c4a-brand span { color: var(--c4a-green); }
+  .c4a-brand small { color: #9fc4e8; font-weight: 500; margin-left: 6px; }
+  .c4a-legend { display: flex; align-items: center; gap: 8px; font-size: .85rem; color: #dbe9f7; }
+  .c4a-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--c4a-green); border: 2px solid var(--c4a-white); }
+
+  #panorama { flex: 1; min-height: 0; width: 100%; }
+
+  /* Embed mode: hide header (?embed=1) */
+  body.embed header.c4a-bar { display: none; }
+
+  /* Hotspot marker */
+  .pnlm-hotspot-base.c4a-hotspot {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--c4a-green); border: 3px solid var(--c4a-white);
+    box-shadow: 0 2px 8px rgba(0,0,0,.5);
+  }
+  .pnlm-hotspot-base.c4a-hotspot::after {
+    content: "♿"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: var(--c4a-white); font-size: 18px; line-height: 1;
+  }
+  .pnlm-hotspot-base.c4a-hotspot.c4a-demo { background: #E0A800; }
+  .pnlm-hotspot-base.c4a-hotspot span.c4a-tip {
+    visibility: hidden; position: absolute; left: 50%; bottom: 44px; transform: translateX(-50%);
+    width: max-content; max-width: 240px; padding: 8px 10px; border-radius: 8px;
+    background: var(--c4a-navy); color: var(--c4a-white); font-size: 13px; line-height: 1.35;
+    border: 2px solid var(--c4a-blue); text-align: left; white-space: normal;
+  }
+  .pnlm-hotspot-base.c4a-hotspot:hover span.c4a-tip,
+  .pnlm-hotspot-base.c4a-hotspot:focus span.c4a-tip { visibility: visible; }
+  .c4a-tip b { color: #7fd69a; display: block; margin-bottom: 2px; }
+
+  /* Pannellum controls in brand colors */
+  .pnlm-controls { border-color: var(--c4a-blue) !important; }
+  .pnlm-controls-container .pnlm-controls { background-color: var(--c4a-blue); }
+
+  /* Coordinate picker panel (?pick=1) */
+  #picker {
+    display: none; position: fixed; left: 10px; right: 10px; bottom: max(10px, env(safe-area-inset-bottom));
+    max-width: 520px; padding: 10px 12px; border-radius: 10px;
+    background: rgba(10,37,64,.95); color: var(--c4a-white); font-size: 14px; z-index: 50;
+    border: 2px solid var(--c4a-green);
+  }
+  #picker code { display: block; margin: 6px 0; padding: 6px; background: #06182c; border-radius: 6px; color: #7fd69a; word-break: break-all; }
+  #picker button { background: var(--c4a-blue); color: #fff; border: 0; padding: 8px 12px; border-radius: 6px; font-size: 14px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<header class="c4a-bar">
+  <div class="c4a-brand">City4All <span>XR</span><small>360° προσβασιμότητα</small></div>
+  <div class="c4a-legend"><span class="c4a-dot"></span> Ράμπα προσβασιμότητας</div>
+</header>
+
+<div id="panorama"></div>
+
+<div id="picker">
+  <div><b>Λειτουργία επιλογής σημείου.</b> Κάνε κλικ/tap πάνω στη ράμπα:</div>
+  <code id="pickOut">—</code>
+  <button id="pickCopy" type="button">Αντιγραφή</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pannellum/2.5.6/pannellum.js"></script>
+<script>
+/* ============================================================
+   ΡΥΘΜΙΣΕΙΣ – αυτό είναι το μόνο σημείο που αλλάζεις συνήθως
+   ============================================================ */
+
+// Σχετική διαδρομή: δουλεύει σε GitHub Pages και σε υποφάκελο repo.
+const PANORAMA_FILE = "ramp-01.jpg";
+
+// Γωνίες του πανοράματος (από Hugin → tab Stitcher → Field of View).
+// ΠΡΟΣΟΧΗ: οι τιμές είναι ΕΚΤΙΜΗΣΗ (360 × 154) μέχρι να επιβεβαιωθούν από το Hugin.
+// Αν το πανόραμα ΔΕΝ είναι πλήρες 360°, άλλαξε το HAOV.
+const HAOV = 360;      // οριζόντιο εύρος σε μοίρες
+const VAOV = 154;      // κάθετο εύρος σε μοίρες (360 * 2198 / 5132 ≈ 154)
+const V_OFFSET = 0;    // μετατόπιση ορίζοντα, συνήθως 0
+
+// Αρχική θέαση
+const START_YAW = 0;
+const START_PITCH = 0;
+const START_HFOV = 100;
+
+// Σημεία ράμπας. Κάθε ράμπα = ένα αντικείμενο.
+// pitch = ύψος (+πάνω, −κάτω), yaw = αριστερά/δεξιά (−180 .. 180)
+const HOTSPOTS = [
+  {
+    id: "demo-ramp",
+    pitch: -10,           // DEMO – όχι πραγματική θέση
+    yaw: 0,               // DEMO – όχι πραγματική θέση
+    title: "DEMO – Placeholder ράμπας",
+    text: "Δοκιμαστικό σημείο. Βρες την πραγματική ράμπα με ?pick=1 και άλλαξε pitch/yaw.",
+    demo: true
+  }
+  // Παράδειγμα πραγματικής ράμπας (αντίγραψε και συμπλήρωσε):
+  // { id: "ramp-001", pitch: -12.4, yaw: 37.8, title: "Ράμπα εισόδου", text: "Κλίση ~6%, πλάτος 1.5 m", demo: false },
+];
+
+/* ============================================================
+   ΚΩΔΙΚΑΣ – δεν χρειάζεται αλλαγή
+   ============================================================ */
+const params = new URLSearchParams(location.search);
+if (params.get("embed") === "1") document.body.classList.add("embed");
+const PICK_MODE = params.get("pick") === "1";
+
+function buildTooltip(hotSpotDiv, args) {
+  hotSpotDiv.classList.add("c4a-hotspot");
+  if (args.demo) hotSpotDiv.classList.add("c4a-demo");
+  hotSpotDiv.setAttribute("tabindex", "0");
+  hotSpotDiv.setAttribute("role", "button");
+  hotSpotDiv.setAttribute("aria-label", args.title);
+  const tip = document.createElement("span");
+  tip.className = "c4a-tip";
+  const b = document.createElement("b");
+  b.textContent = args.title;
+  tip.appendChild(b);
+  tip.appendChild(document.createTextNode(args.text || ""));
+  hotSpotDiv.appendChild(tip);
+}
+
+const config = {
+  type: "equirectangular",
+  panorama: PANORAMA_FILE,
+  autoLoad: true,
+  haov: HAOV,
+  vaov: VAOV,
+  vOffset: V_OFFSET,
+  minPitch: V_OFFSET - VAOV / 2,
+  maxPitch: V_OFFSET + VAOV / 2,
+  yaw: START_YAW,
+  pitch: START_PITCH,
+  hfov: START_HFOV,
+  minHfov: 30,
+  maxHfov: 120,
+  showZoomCtrl: true,
+  showFullscreenCtrl: true,
+  mouseZoom: true,
+  keyboardZoom: true,
+  compass: false,
+  hotSpotDebug: false,
+  hotSpots: HOTSPOTS.map(h => ({
+    id: h.id,
+    pitch: h.pitch,
+    yaw: h.yaw,
+    type: "custom",
+    cssClass: "c4a-hotspot",
+    createTooltipFunc: buildTooltip,
+    createTooltipArgs: { title: h.title, text: h.text, demo: !!h.demo }
+  }))
+};
+
+const viewer = pannellum.viewer("panorama", config);
+
+viewer.on("error", function (msg) {
+  console.error("Pannellum error:", msg);
+});
+
+// Λειτουργία επιλογής συντεταγμένων
+if (PICK_MODE) {
+  const box = document.getElementById("picker");
+  const out = document.getElementById("pickOut");
+  box.style.display = "block";
+  viewer.on("mousedown", function (event) {
+    const c = viewer.mouseEventToCoords(event); // [pitch, yaw]
+    const p = c[0].toFixed(1), y = c[1].toFixed(1);
+    out.textContent = "pitch: " + p + ",  yaw: " + y;
+  });
+  document.getElementById("pickCopy").addEventListener("click", function () {
+    const t = out.textContent;
+    if (navigator.clipboard) navigator.clipboard.writeText(t);
+  });
+}
+</script>
+</body>
+</html>
