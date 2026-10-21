@@ -11,6 +11,8 @@
     --c4a-green: #2FA84F;
     --c4a-white: #FFFFFF;
     --c4a-navy: #0A2540;
+    /* Μπλε βέλος με λευκό περίγραμμα και ντεγκραντέ (SVG, χωρίς emoji) */
+    --c4a-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 48'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%2325A0EE'/%3E%3Cstop offset='1' stop-color='%23005A9C'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M20 46 L4 26 H13 V4 H27 V26 H36 Z' fill='url(%23g)' stroke='%23FFFFFF' stroke-width='2.5' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--c4a-navy); }
@@ -26,7 +28,7 @@
   .c4a-brand span { color: var(--c4a-green); }
   .c4a-brand small { color: #9fc4e8; font-weight: 500; margin-left: 6px; }
   .c4a-legend { display: flex; align-items: center; gap: 8px; font-size: .85rem; color: #dbe9f7; }
-  .c4a-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--c4a-green); border: 2px solid var(--c4a-white); }
+  .c4a-dot { width: 16px; height: 19px; background: var(--c4a-arrow) center / contain no-repeat; }
 
   #panorama { flex: 1; min-height: 0; width: 100%; }
 
@@ -34,18 +36,39 @@
   body.embed header.c4a-bar { display: none; }
 
   /* Hotspot marker */
+  /* Το div είναι 40x96: το κέντρο του (y=48) είναι το ακριβές σημείο της ράμπας.
+     Το βελάκι ζωγραφίζεται στο πάνω μισό και η ακίδα του πέφτει στο κέντρο. */
   .pnlm-hotspot-base.c4a-hotspot {
-    width: 34px; height: 34px; border-radius: 50%;
-    background: var(--c4a-green); border: 3px solid var(--c4a-white);
-    box-shadow: 0 2px 8px rgba(0,0,0,.5);
+    width: 40px; height: 96px; cursor: pointer; outline: none;
   }
+  .pnlm-hotspot-base.c4a-hotspot::before {
+    content: ""; position: absolute; left: 0; top: 0; width: 40px; height: 48px;
+    background: var(--c4a-arrow) center / contain no-repeat;
+    filter: drop-shadow(0 3px 4px rgba(0,0,0,.45));
+    animation: c4a-bob 1.8s ease-in-out infinite;
+  }
+  /* Δακτύλιος "ακτίνας" στο σημείο της ράμπας */
   .pnlm-hotspot-base.c4a-hotspot::after {
-    content: "♿"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    color: var(--c4a-white); font-size: 18px; line-height: 1;
+    content: ""; position: absolute; left: 6px; top: 43px; width: 28px; height: 10px;
+    border: 2px solid rgba(0,119,200,.85); border-radius: 50%;
+    animation: c4a-ping 1.8s ease-out infinite;
   }
-  .pnlm-hotspot-base.c4a-hotspot.c4a-demo { background: #E0A800; }
+  .pnlm-hotspot-base.c4a-hotspot:hover::before,
+  .pnlm-hotspot-base.c4a-hotspot:focus-visible::before { filter: drop-shadow(0 0 6px rgba(0,119,200,.9)) drop-shadow(0 3px 4px rgba(0,0,0,.45)); }
+  .pnlm-hotspot-base.c4a-hotspot:focus-visible::after { border-color: var(--c4a-white); }
+  .pnlm-hotspot-base.c4a-hotspot.c4a-demo::after { border-style: dashed; }
+  .c4a-badge {
+    position: absolute; left: 50%; top: 52px; transform: translateX(-50%);
+    padding: 1px 6px; border-radius: 4px; background: var(--c4a-navy); color: var(--c4a-white);
+    font-size: 10px; font-weight: 700; letter-spacing: .5px; border: 1px solid var(--c4a-blue);
+  }
+  @keyframes c4a-bob { 0%,100% { transform: translateY(-4px); } 50% { transform: translateY(2px); } }
+  @keyframes c4a-ping { 0% { transform: scale(.5); opacity: .9; } 100% { transform: scale(1.3); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) {
+    .pnlm-hotspot-base.c4a-hotspot::before, .pnlm-hotspot-base.c4a-hotspot::after { animation: none; }
+  }
   .pnlm-hotspot-base.c4a-hotspot span.c4a-tip {
-    visibility: hidden; position: absolute; left: 50%; bottom: 44px; transform: translateX(-50%);
+    visibility: hidden; position: absolute; left: 50%; bottom: 102px; transform: translateX(-50%); z-index: 5;
     width: max-content; max-width: 240px; padding: 8px 10px; border-radius: 8px;
     background: var(--c4a-navy); color: var(--c4a-white); font-size: 13px; line-height: 1.35;
     border: 2px solid var(--c4a-blue); text-align: left; white-space: normal;
@@ -140,6 +163,12 @@ function buildTooltip(hotSpotDiv, args) {
   tip.appendChild(b);
   tip.appendChild(document.createTextNode(args.text || ""));
   hotSpotDiv.appendChild(tip);
+  if (args.demo) {
+    const badge = document.createElement("span");
+    badge.className = "c4a-badge";
+    badge.textContent = "DEMO";
+    hotSpotDiv.appendChild(badge);
+  }
 }
 
 const config = {
